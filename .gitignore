@@ -53,3 +53,4 @@ DAIMU/.vs/DAIMU/v16/.suo
 *.recipe
 *.ilk
 *.enc
+FakeBot/FakeBot/obj/Debug/net6.0/FakeBot.csproj.BuildWithSkipAnalyzers

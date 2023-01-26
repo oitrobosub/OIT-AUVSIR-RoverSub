@@ -30,7 +30,6 @@ class IMUBuilder
 		void setIMU(int IMUID, string IMUType, string IMUName, float Weight);
 		string getIMUData(int IMUID);
 		void setIMUData(int IMUID, string Data);
-		void storeData(int IMUID);
 		int verifyData(string Data);
 		void openDB();
 };

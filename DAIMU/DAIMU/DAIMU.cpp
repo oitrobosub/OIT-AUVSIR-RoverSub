@@ -1,5 +1,6 @@
 // Tyler Lucas
 // Creation Date: 1/5/2022
+#pragma once
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -7,6 +8,7 @@
 #include <WS2tcpip.h>
 #include <future>
 #include "IMUBuilder.h"
+#include "CondenseData.h"
 
 #define DEFAULT_BUFLEN 1024
 
@@ -90,15 +92,16 @@ int main()
         //Creates object with all connected IMUs named, NOT no data present at this point
         DAIMUBuilder->IMUPopulator(recvbuf);
 
-        //TEMPORARY
+        //TEMPORARY count to use later
         int count = 0;
         while (communicating)
         {
             //Just do it non-async in here
             communicating = pollData(sock);
-            //data processing stuff
+            //Calls default ctor for CondenseData class
+            CondenseData;
             this_thread::sleep_for(chrono::milliseconds(250));
-            printf("Count: %d ", count);
+            printf("Count: %d\n", count);
             //temp to not loop forever
             count++;
             if (count > 3)

@@ -48,7 +48,7 @@ IMUBuilder::internalMeasurementUnit IMUBuilder::getIMU(int IMUID)
 	{
 		return *it;
 	}
-	else 
+	else
 	{
 		return internalMeasurementUnit();
 	}
@@ -70,7 +70,7 @@ void IMUBuilder::setIMU(int IMUID, string IMUType, string IMUName, float Weight)
 	sqlite3_bind_int(stmt, 1, IMUID);
 	sqlite3_bind_text(stmt, 2, IMUType.c_str(), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt, 3, IMUName.c_str(), -1, SQLITE_STATIC);
-	sqlite3_bind_double(stmt, 4, Weight);
+	sqlite3_bind_double(stmt, 4, Weight); 
 	//execute created stmt
 	sqlite3_step(stmt);
 	//clean up stmt
@@ -85,7 +85,7 @@ void IMUBuilder::setIMU(int IMUID, string IMUType, string IMUName, float Weight)
 		const char* IMUName = (const char*)sqlite3_column_text(stmt, 2);
 		double Weight = sqlite3_column_double(stmt, 3);
 		//Using printf here to avoid potential interleaving issues with cout
-		printf("IMUID: %d, IMUType: %s, IMUName: %s, Weight: %f\n", IMUID, IMUType, IMUName, Weight);
+		printf("Current DB contents:\nIMUID: %d, IMUType: %s, IMUName: %s, Weight: %f\n", IMUID, IMUType, IMUName, Weight);
 	}
 	//clean up stmt
 	sqlite3_finalize(stmt);
@@ -135,16 +135,6 @@ void IMUBuilder::setIMUData(int IMUID, string Data)
 		//clean up stmt
 		sqlite3_finalize(stmt);
 	}
-}
-
-void IMUBuilder::storeData(int IMUID)
-{
-	auto it = std::find_if(IMUVector.begin(), IMUVector.end(),
-		[IMUID](const internalMeasurementUnit& IMU) { return IMU.IMUID == IMUID; });
-
-	//Place IMU into database
-	openDB();
-
 }
 
 int IMUBuilder::verifyData(string Data)
