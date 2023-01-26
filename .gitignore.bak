@@ -36,6 +36,7 @@ FakeBot/FakeBot/obj/Debug/net6.0/FakeBot.GeneratedMSBuildEditorConfig.editorconf
 *.opendb
 *.db-wal
 *.ipch
+*.vcxproj
 *.filters
 *.user
 *.editorconfig
@@ -49,7 +50,3 @@ DAIMU/DAIMU/x64/Debug/DAIMU.vcxproj.FileListAbsolute.txt
 *.idb
 FakeBot/FakeBot/obj/FakeBot.csproj.nuget.dgspec.json
 FakeBot/FakeBot/obj/project.assets.json
-DAIMU/.vs/DAIMU/v16/.suo
-*.recipe
-*.ilk
-*.enc
