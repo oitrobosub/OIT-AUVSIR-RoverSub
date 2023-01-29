@@ -231,7 +231,7 @@ void CondenseData::storeData(string objectName)
 		string tableCreation = "CREATE TABLE IF NOT EXISTS OptTable (OptForAccuracy TEXT, OptForPositionF TEXT, OptForPositionR TEXT, OptForPositionS TEXT, OptForPositionP TEXT);";
 		rc = sqlite3_exec(imuBuilder.db, tableCreation.c_str(), NULL, NULL, NULL);
 	}
-	//TODO: switch case to determine which each is optmized for?
+
 	if (objectName == "accuracyOpt")
 	{
 		string cmd = "UPDATE OptTable SET OptForAccuracy = ?;";
@@ -244,7 +244,7 @@ void CondenseData::storeData(string objectName)
 
 		sqlite3_stmt* stmt;
 		sqlite3_prepare_v2(imuBuilder.db, cmd.c_str(), -1, &stmt, NULL);
-		sqlite3_bind_text(stmt, 1, accuracyString, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt, 1, accuracyString.c_str(), -1, SQLITE_STATIC);
 		//execute created stmt
 		sqlite3_step(stmt);
 		//clean up stmt
@@ -254,14 +254,34 @@ void CondenseData::storeData(string objectName)
 	}
 	else
 	{
+		string cmd;
 		if (objectName == "positionOpt-F")
+			cmd = "UPDATE OptTable SET OptForPositionF = ?";
 
 		if (objectName == "positionOpt-P")
+			cmd = "UPDATE OptTable SET OptForPositionP = ?";
 
 		if (objectName == "positionOpt-R")
+			cmd = "UPDATE OptTable SET OptForPositionR = ?";
 
 		if (objectName == "positionOpt-S")
+			cmd = "UPDATE OptTable SET OptForPotisitonS = ?";
 
+		string positionString = "";
+
+		//Iterate through positionOpt and create a string representation of the optimized data
+		for (auto it = begin(positionOpt); it != end(positionOpt); ++it)
+			positionString += std::get<1>(*it) + ": " + to_string(std::get<2>(*it)) + ", ";
+
+		sqlite3_stmt* stmt;
+		sqlite3_prepare_v2(imuBuilder.db, cmd.c_str(), -1, &stmt, NULL);
+		sqlite3_bind_text(stmt, 1, positionString.c_str(), -1, SQLITE_STATIC);
+		//execute created stmt
+		sqlite3_step(stmt);
+		//clean up stmt
+		sqlite3_finalize(stmt);
+
+		return;
 	}
 }
 
