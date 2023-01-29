@@ -234,6 +234,22 @@ void CondenseData::storeData(string objectName)
 	//TODO: switch case to determine which each is optmized for?
 	if (objectName == "accuracyOpt")
 	{
+		string cmd = "UPDATE OptTable SET OptForAccuracy = ?;";
+
+		string accuracyString = "";
+
+		//Iterate through accuracyOpt and create a string representation of the optimized data
+		for (auto it = begin(accuracyOpt); it != end(accuracyOpt); ++it)
+			accuracyString += it->first + ": " + to_string(it->second) + ", ";
+
+		sqlite3_stmt* stmt;
+		sqlite3_prepare_v2(imuBuilder.db, cmd.c_str(), -1, &stmt, NULL);
+		sqlite3_bind_text(stmt, 1, accuracyString, -1, SQLITE_STATIC);
+		//execute created stmt
+		sqlite3_step(stmt);
+		//clean up stmt
+		sqlite3_finalize(stmt);
+
 		return;
 	}
 	else

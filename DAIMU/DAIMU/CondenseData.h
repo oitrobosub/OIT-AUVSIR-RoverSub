@@ -7,9 +7,9 @@
 class CondenseData
 {
 	public:
-		//IMUName, IMUType, data
+		//IMUName, DataType, data
 		vector<std::tuple<string, string, long double>> positionOpt;
-		//IMUType, data
+		//DataType, data
 		vector<std::pair<string, long double>> accuracyOpt;
 
 		std::list <std::pair<IMUBuilder::internalMeasurementUnit, string>> IMUList;
