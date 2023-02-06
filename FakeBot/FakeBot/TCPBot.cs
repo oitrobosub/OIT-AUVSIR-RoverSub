@@ -59,13 +59,17 @@ namespace FakeBot
             //NOTE: This list and future data parsing/sending assume the IMUName is a field the club can modify to include "-AUVSIR-SIDEOFBOT"
             //CONTINUED: where SIDEOFBOT is either F/R/P/S for Frontal/Rear/Port/Starboard
             List<IMU> IMUs = new List<IMU>();
+
+            //-------------------------------------------------------------------------------------
+            ///BOTH OF THESE ARE TAKEN AT THE SAME INSTANT WHILE ACCELERATING FORWARD
             //WitMotion WT901C TTL 9 Axis IMU Sensor Tilt Angle Roll Pitch Yaw + Acceleration + Gyroscope + Magnetometer MPU9250 on PC/Android/MCU
             IMU frontalGyroAccMag = new IMU
             {
                 IMUType = "Gyro/Accelerometer/Magnetometer",
                 IMUName = "WitMotion-WT901C-AUVSIR-F",
                 Weight = .8F,
-                data = "TempData-ReplaceWithImitationData"
+                //Accelerating forward, Rotation(deg), acceleration, magnetic field
+                data = "Rx:150 Ry:-5 Rz:20 Ax:.98 Ay:.02 Az:-.91 Mx:45 My:35 Mz:-60"
             };
             IMUs.Add(frontalGyroAccMag);
             //WitMotion WT901C TTL 9 Axis IMU Sensor Tilt Angle Roll Pitch Yaw + Acceleration + Gyroscope + Magnetometer MPU9250 on PC/Android/MCU
@@ -74,21 +78,24 @@ namespace FakeBot
                 IMUType = "Gyro/Accelerometer/Magnetometer",
                 IMUName = "WitMotion-WT901C-AUVISR-R",
                 Weight = .8F,
-                data = "TempData-ReplaceWithImitationData"
+                //Accelerating forward, Rotation(deg), acceleration, magnetic field
+                data = "Rx:145 Ry:-4 Rz:23 Ax:.99 Ay:.02 Az:-.89 Mx:48 My:37 Mz:-55"
             };
+            //-------------------------------------------------------------------------------------
+
             IMUs.Add(rearwardGyroAccMag);
             string rString;
             if (displayConnected)
-                rString = "T ";
+                rString = "T::";
             else
-                rString = "F ";
+                rString = "F::";
             //format of response: ID::Name
             //This is initial access, just getting general IMU information
             int IMUCount = 0;
             if (accessType == "Init")
                 foreach(IMU imu in IMUs)
                 {
-                    rString += IMUCount + "::" + imu.IMUType + "::" + imu.IMUName + "::" + imu.Weight + " ";//Yes it is space terminated right now. If you are reading this and want to add the line to get rid of the last space go for it.
+                    rString += IMUCount + "::" + imu.IMUType + "::" + imu.IMUName + "::" + imu.Weight + ",,";
                     IMUCount++;
                 }
             //format of response: ID::Name
@@ -97,7 +104,7 @@ namespace FakeBot
             {
                 foreach(IMU imu in IMUs)
                 {
-                    rString += IMUCount + "::" + imu.IMUType + "::" + imu.IMUName + "::" + imu.Weight + "::" + imu.data + " ";//Yes it is space terminated right now. If you are reading this and want to add the line to get rid of the last space go for it.
+                    rString += IMUCount + "::" + imu.IMUType + "::" + imu.IMUName + "::" + imu.Weight + "::" + imu.data + ",,";
                     IMUCount++;
                 }
             }
@@ -175,7 +182,7 @@ namespace FakeBot
         private static byte[] InitializationRequestHandler(NetworkStream stream, bool displayConnected)
         {
             //for each IMU, send IMU Name and IMU ID
-            byte[] response = new byte[4096];
+            byte[] response = new byte[8192];
             response = AccessIMUs("Init", displayConnected);
             return response;
         }

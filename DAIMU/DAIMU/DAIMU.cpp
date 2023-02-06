@@ -9,14 +9,20 @@
 #include <future>
 #include "IMUBuilder.h"
 #include "CondenseData.h"
+#include "Display.h"
 
-#define DEFAULT_BUFLEN 1024
+#define DEFAULT_BUFLEN 4096
 
 using namespace std;
 
-IMUBuilder* DAIMUBuilder = new IMUBuilder();
-//Used to track connection state through threads
-promise<bool> statePromise;
+//Debug levels:
+// 0 - Basic, just output to excell at end
+// 1 - Will output at each update of the tables
+//To use these simply pass the debugMode variable into the constructors below
+int debugMode = 1;
+IMUBuilder* DAIMUBuilder = new IMUBuilder(debugMode);
+CondenseData* condense = new CondenseData(debugMode);
+Display* display = new Display();
 
 bool pollData(SOCKET sock);
 
@@ -99,12 +105,13 @@ int main()
             //Just do it non-async in here
             communicating = pollData(sock);
             //Calls default ctor for CondenseData class
-            CondenseData;
+            //If you want to run in debug mode pass a number in to this ctor that defines level of verbosity (currently 0, 1)
+            condense->condenser();
             this_thread::sleep_for(chrono::milliseconds(250));
             printf("Count: %d\n", count);
             //temp to not loop forever
             count++;
-            if (count > 3)
+            if (count > 1)
                 communicating = false;
         }
     }
@@ -114,6 +121,14 @@ int main()
     if(sock != INVALID_SOCKET)
         closesocket(sock);
     WSACleanup();
+
+    if (debugMode > 0)
+    {
+        display->DBToExcel("SELECT * FROM IMUTable;", "IMUTable.csv");
+        display->DBToExcel("SELECT * FROM OptTable;", "OptTable.csv");
+    }
+
+    //Destroy what needs to be destroyed
     DAIMUBuilder->~IMUBuilder();
 
     return 0;

@@ -7,6 +7,7 @@
 class CondenseData
 {
 	public:
+		int cdDebugMode = 0;
 		//IMUName, DataType, data
 		vector<std::tuple<string, string, long double>> positionOpt;
 		//DataType, data
@@ -15,6 +16,8 @@ class CondenseData
 		std::list <std::pair<IMUBuilder::internalMeasurementUnit, string>> IMUList;
 
 		CondenseData();
+		CondenseData(int debugMode);
+		void condenser();
 		~CondenseData();
 
 	private:

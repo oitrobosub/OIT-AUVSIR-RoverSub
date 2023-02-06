@@ -10,6 +10,7 @@ using namespace std;
 class IMUBuilder
 {
 	public:
+		int ibDebugMode = 0; //TODO: this
 		struct internalMeasurementUnit 
 		{
 			int IMUID;
@@ -22,7 +23,9 @@ class IMUBuilder
 		sqlite3* db;
 
 		IMUBuilder();
+		IMUBuilder(int debugMode);
 		void IMUPopulator(string IMUs);
+		void openDB();
 		~IMUBuilder();
 
 	private:
@@ -31,6 +34,6 @@ class IMUBuilder
 		string getIMUData(int IMUID);
 		void setIMUData(int IMUID, string Data);
 		int verifyData(string Data);
-		void openDB();
+		
 };
 
