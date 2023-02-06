@@ -54,3 +54,5 @@ DAIMU/.vs/DAIMU/v16/.suo
 *.ilk
 *.enc
 FakeBot/FakeBot/obj/Debug/net6.0/FakeBot.csproj.BuildWithSkipAnalyzers
+DAIMU/DAIMU/IMUTable.csv
+DAIMU/DAIMU/OptTable.csv
