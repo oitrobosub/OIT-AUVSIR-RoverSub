@@ -8,9 +8,19 @@ CondenseData::CondenseData()
 	int rc = 1;
 	while (rc != 0)
 	{
-		string tableCreation = "CREATE TABLE IF NOT EXISTS OptTable (OptForAccuracy TEXT, OptForPositionF TEXT, OptForPositionR TEXT, OptForPositionS TEXT, OptForPositionP TEXT);";
+		string tableCreation = "CREATE TABLE IF NOT EXISTS OptTable (ID INT, OptForAccuracy TEXT, OptForPositionF TEXT, OptForPositionR TEXT, OptForPositionS TEXT, OptForPositionP TEXT);";
 		rc = sqlite3_exec(imuBuilder.db, tableCreation.c_str(), NULL, NULL, NULL);
 	}
+	//Set row 0 ID in database
+	int ID = 0;
+	sqlite3_stmt* stmt;
+	string cmd = "INSERT INTO OptTable (ID) VALUES (?);";
+	sqlite3_prepare_v2(imuBuilder.db, cmd.c_str(), -1, &stmt, NULL);
+	sqlite3_bind_int(stmt, 1, ID);
+	//execute created stmt
+	sqlite3_step(stmt);
+	//clean up stmt
+	sqlite3_finalize(stmt);
 }
 
 CondenseData::CondenseData(int debugMode)
@@ -19,12 +29,22 @@ CondenseData::CondenseData(int debugMode)
 	//Set up table if it does not exist
 	IMUBuilder imuBuilder;
 	//rc = return code -> this is common sqlite3 naming convention
-	int rc = 1;
+	int rc = 1; 
 	while (rc != 0)
 	{
-		string tableCreation = "CREATE TABLE IF NOT EXISTS OptTable (OptForAccuracy TEXT, OptForPositionF TEXT, OptForPositionR TEXT, OptForPositionS TEXT, OptForPositionP TEXT);";
+		string tableCreation = "CREATE TABLE IF NOT EXISTS OptTable (ID INT, OptForAccuracy TEXT, OptForPositionF TEXT, OptForPositionR TEXT, OptForPositionS TEXT, OptForPositionP TEXT);";
 		rc = sqlite3_exec(imuBuilder.db, tableCreation.c_str(), NULL, NULL, NULL);
 	}
+	//Set row 0 ID in database
+	int ID = 0;
+	sqlite3_stmt* stmt;
+	string cmd = "INSERT INTO OptTable (ID) VALUES (?);";
+	sqlite3_prepare_v2(imuBuilder.db, cmd.c_str(), -1, &stmt, NULL);
+	sqlite3_bind_int(stmt, 1, ID);
+	//execute created stmt
+	sqlite3_step(stmt);
+	//clean up stmt
+	sqlite3_finalize(stmt);
 }
 
 void CondenseData::condenser()
@@ -48,7 +68,37 @@ void CondenseData::condenser()
 		optimizeOverAll(IMU);
 		optimizeOnPosition(IMU, position);
 	}
+	//TODO: here accuracyOpt is fully built. push_back onto the accuracyOptList then another push_back for each part of accuracyOpt?
+	accuracyOptList.push_back(accuracyOpt);
+	/*for (auto it = begin(accuracyOpt); it != end(accuracyOpt); ++it)
+		accuracyOptList[i].push_back();*/
+	optCount++;
+	if (optCount == 3)
+	{
+		adjustOpt(optCount);
+		optCount = 0;
+	}
 	return;
+}
+
+
+void CondenseData::adjustOpt(int optCount)
+{
+	//get acOpt from accuracyOptList - should encompass whole first IMUList
+	vector<std::pair<string, long double>> oldAccuracyOpt = accuracyOptList.front();
+	//iterate through oldAcOpt and acOpt at the same time doing the following:
+	//NOTE: This only works since no IMUs can be added after robot starts up. So the optimizations will have the same data in the same order
+	for (auto it = begin(oldAccuracyOpt), it2 = begin(accuracyOpt); it != end(oldAccuracyOpt) && it2 != end(accuracyOpt); ++it, ++it2) {
+		//it = oldAccuracyOpt, it2 = accuracyOpt
+		long double oldAccuracyOptValue = it->second;
+		long double accuracyOptValue = it2->second;
+		//average = ((average * numValues) - valueToRemove) / (numValues - 1);
+		long double newAccuracyOptValue = ((accuracyOptValue * optCount) - oldAccuracyOptValue) / (optCount - 1);
+		//replace most recent acOpt value with newly created acOpt value
+		it2->second = newAccuracyOptValue;
+	}
+	//remove oldest accuracy optimization
+	accuracyOptList.erase(accuracyOptList.begin());
 }
 
 void CondenseData::optimizeOverAll(IMUBuilder::internalMeasurementUnit IMU)
@@ -65,8 +115,6 @@ void CondenseData::optimizeOverAll(IMUBuilder::internalMeasurementUnit IMU)
 
 		char* type = strtok_s(tokenCopy, ":", &context2);
 		long double value = stold(strtok_s(NULL, ":", &context2));
-		//Weight value accordingly
-		value = value * IMU.Weight;
 
 		//Check for existing entry of same type of data
 		auto it = std::find_if(accuracyOpt.begin(), accuracyOpt.end(),
@@ -79,8 +127,7 @@ void CondenseData::optimizeOverAll(IMUBuilder::internalMeasurementUnit IMU)
 			// or less error. If you want it to be even more accurate, we can brainstorm a struct to use but it 
 			// would cause data bloat.
 
-			//value was weighted above not necessacary in numerator
-			long double newValue = (it->second * .99) + (value * IMU.Weight) / (.99 + IMU.Weight);
+			long double newValue = ((it->second * .99) + (value * IMU.Weight)) / (.99 + IMU.Weight);
 			it->second = newValue;
 		}
 		//If it does not exist, place the pair into the vector and assume it is accurate
@@ -90,10 +137,13 @@ void CondenseData::optimizeOverAll(IMUBuilder::internalMeasurementUnit IMU)
 		//next data type/value pair
 		token = strtok_s(NULL, " ", &context);
 	}
+	//TODO: pushing each imu, not total list of imus
+	//accuracyOptList.push_back(accuracyOpt);
 	free(IMUDataCopy);
 
 	storeData("accuracyOpt");
 }
+
 
 void CondenseData::optimizeOnPosition(IMUBuilder::internalMeasurementUnit IMU, string position)
 {
@@ -114,29 +164,33 @@ void CondenseData::optimizeOnPosition(IMUBuilder::internalMeasurementUnit IMU, s
 		char* tokenCopy = _strdup(token);
 
 		char* type = strtok_s(tokenCopy, ":", &context2);
-		long double value = stold(strtok_s(NULL, ":", &context2));
-		//Weight value according to basic weight
-		value = value * IMU.Weight;
+		long double sValue = stold(strtok_s(NULL, ":", &context2)); //TODO: may need to place this in while to avoid reassignment
+		double newWeight = IMU.Weight;
 
+		// ALSO: make it just overwrite for the requested pos, not update. This is based on immediate position so do that.
 		//Run once for each possible position
 		while (loopCount < 4)
 		{
+			long double value = sValue;
 			//Weight value by position
 			if (position == "F")//Front
 			{
 				switch (loopCount)
 				{
 					case 0://Calculating front opt
-						value = value * 1;
+						value = value;
 						break;
 					case 1://Calculating port opt
 						value = value * .5;
+						newWeight = .5;
 						break;
 					case 2://Calculating rear opt
 						value = value * .25;
+						newWeight = .75;
 						break;
 					case 3://Calculating starboard opt
 						value = value * .5;
+						newWeight = .5;
 						break;
 				}
 			}
@@ -146,15 +200,18 @@ void CondenseData::optimizeOnPosition(IMUBuilder::internalMeasurementUnit IMU, s
 				{
 					case 0://Calculating front opt
 						value = value * .5;
+						newWeight = .5;
 						break;
 					case 1://Calculating port opt
-						value = value * 1;
+						value = value;
 						break;
 					case 2://Calculating rear opt
 						value = value * .5;
+						newWeight = .5;
 						break;
 					case 3://Calculating starboard opt
 						value = value * .25;
+						newWeight = .75;
 						break;
 				}
 			}
@@ -164,15 +221,18 @@ void CondenseData::optimizeOnPosition(IMUBuilder::internalMeasurementUnit IMU, s
 				{
 					case 0://Calculating front opt
 						value = value * .25;
+						newWeight = .75;
 						break;
 					case 1://Calculating port opt
 						value = value * .5;
+						newWeight = .5;
 						break;
 					case 2://Calculating rear opt
-						value = value * 1;
+						value = value;
 						break;
 					case 3://Calculating starboard opt
 						value = value * .5;
+						newWeight = .5;
 						break;
 				}
 			}
@@ -182,15 +242,18 @@ void CondenseData::optimizeOnPosition(IMUBuilder::internalMeasurementUnit IMU, s
 				{
 					case 0://Calculating front opt
 						value = value * .5;
+						newWeight = .5;
 						break;
 					case 1://Calculating port opt
 						value = value * .25;
+						newWeight = .75;
 						break;
 					case 2://Calculating rear opt
 						value = value * .5;
+						newWeight = .5;
 						break;
 					case 3://Calculating starboard opt
-						value = value * 1;
+						value = value;
 						break;
 				}
 			}
@@ -205,18 +268,15 @@ void CondenseData::optimizeOnPosition(IMUBuilder::internalMeasurementUnit IMU, s
 				// or less error. If you want it to be even more accurate, we can brainstorm a struct to use but it 
 				// would cause data bloat.
 
-				//value was weighted above not necessacary in numerator
-				long double newValue = (std::get<2>(*it) * .99) + (value) / (.99 + IMU.Weight);
+				//Weight stays stable - aka no *.5 or such above - make the .99 below change to be the rest of the weight - aka if 
+				// mult new value by .5, the .99 would also become .5, if mult new value by .25 then the .99 would become .75
+				long double newValue = ((std::get<2>(*it) * newWeight) + (value));
 				std::get<2>(*it) = newValue;
 			}
 			//If it does not exist, place the tuple into the vector
 			else
 				positionOpt.push_back(std::make_tuple(IMU.IMUName, type, value));
 
-			//store the data by positionOpt-POSSTRING
-			string dbIDString = "positionOpt";
-			dbIDString += "-" + position;
-			storeData(dbIDString);
 			loopCount++;
 		}
 
@@ -226,6 +286,11 @@ void CondenseData::optimizeOnPosition(IMUBuilder::internalMeasurementUnit IMU, s
 		token = strtok_s(NULL, " ", &context);
 	}
 	free(IMUDataCopy);
+
+	//store the data by positionOpt-POSSTRING
+	string dbIDString = "positionOpt";
+	dbIDString += "-" + position;
+	storeData(dbIDString);
 }
 
 IMUBuilder::internalMeasurementUnit CondenseData::accessData(int ID)
@@ -265,13 +330,13 @@ void CondenseData::storeData(string objectName)
 
 	if (objectName == "accuracyOpt")
 	{
-		string cmd = "UPDATE OptTable SET OptForAccuracy = ?;";
+		string cmd = "UPDATE OptTable SET OptForAccuracy = ? WHERE ID = 0;";
 
 		string accuracyString = "";
 
 		//Iterate through accuracyOpt and create a string representation of the optimized data
 		for (auto it = begin(accuracyOpt); it != end(accuracyOpt); ++it)
-			accuracyString += it->first + ": " + to_string(it->second) + ", ";
+			accuracyString += it->first + ": " + to_string(it->second);
 
 		sqlite3_stmt* stmt;
 		sqlite3_prepare_v2(imuBuilder.db, cmd.c_str(), -1, &stmt, NULL);
@@ -285,22 +350,22 @@ void CondenseData::storeData(string objectName)
 	{
 		string cmd;
 		if (objectName == "positionOpt-F")
-			cmd = "UPDATE OptTable SET OptForPositionF = ?";
+			cmd = "UPDATE OptTable SET OptForPositionF = ? WHERE ID = 0;";
 
 		if (objectName == "positionOpt-P")
-			cmd = "UPDATE OptTable SET OptForPositionP = ?";
+			cmd = "UPDATE OptTable SET OptForPositionP = ? WHERE ID = 0;";
 
 		if (objectName == "positionOpt-R")
-			cmd = "UPDATE OptTable SET OptForPositionR = ?";
+			cmd = "UPDATE OptTable SET OptForPositionR = ? WHERE ID = 0;";
 
 		if (objectName == "positionOpt-S")
-			cmd = "UPDATE OptTable SET OptForPotisitonS = ?";
+			cmd = "UPDATE OptTable SET OptForPositionS = ? WHERE ID = 0;";
 
 		string positionString = "";
 
 		//Iterate through positionOpt and create a string representation of the optimized data
 		for (auto it = begin(positionOpt); it != end(positionOpt); ++it)
-			positionString += std::get<1>(*it) + ": " + to_string(std::get<2>(*it)) + ", ";
+			positionString += std::get<1>(*it) + ": " + to_string(std::get<2>(*it));
 
 		sqlite3_stmt* stmt;
 		sqlite3_prepare_v2(imuBuilder.db, cmd.c_str(), -1, &stmt, NULL);
@@ -320,20 +385,18 @@ void CondenseData::storeData(string objectName)
 		//execute created stmt
 		while (sqlite3_step(stmt) == SQLITE_ROW)
 		{
-			const char* OptForAccuracy = (const char*)sqlite3_column_text(stmt, 0);
-			const char* OptForPositionF = (const char*)sqlite3_column_text(stmt, 1);
-			const char* OptForPositionR = (const char*)sqlite3_column_text(stmt, 2);
-			const char* OptForPositionS = (const char*)sqlite3_column_text(stmt, 3);
-			const char* OptForPositionP = (const char*)sqlite3_column_text(stmt, 4);
+			const char* OptForAccuracy = (const char*)sqlite3_column_text(stmt, 1);
+			const char* OptForPositionF = (const char*)sqlite3_column_text(stmt, 2);
+			const char* OptForPositionR = (const char*)sqlite3_column_text(stmt, 3);
+			const char* OptForPositionS = (const char*)sqlite3_column_text(stmt, 4);
+			const char* OptForPositionP = (const char*)sqlite3_column_text(stmt, 5);
 
 			//Using printf here to avoid potential interleaving issues with cout
 			printf("OptForAccuracy: %s, OptForPositionF: %s, OptForPositionR: %s, OptForPositionS: %s, OptForPositionP: %s\n", OptForAccuracy, OptForPositionF, OptForPositionR, OptForPositionS, OptForPositionP);
 		}
 		//clean up stmt
 		sqlite3_finalize(stmt);
-
 	}
-
 	return;
 }
 
@@ -350,5 +413,5 @@ void CondenseData::basicSortIMUs(IMUBuilder::internalMeasurementUnit IMU)
 
 CondenseData::~CondenseData()
 {
-	//TODO: This
+	
 }

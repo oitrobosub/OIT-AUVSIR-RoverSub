@@ -4,13 +4,13 @@
 #include <cstdint>
 #include <vector>
 #include <sqlite3.h>
+#include <list>
 
 using namespace std;
 
 class IMUBuilder
 {
 	public:
-		int ibDebugMode = 0; //TODO: this
 		struct internalMeasurementUnit 
 		{
 			int IMUID;
@@ -26,14 +26,17 @@ class IMUBuilder
 		IMUBuilder(int debugMode);
 		void IMUPopulator(string IMUs);
 		void openDB();
+		void clearTables();
 		~IMUBuilder();
 
 	private:
+		int ibDebugMode = 0;
+
 		internalMeasurementUnit getIMU(int IMUID);
 		void setIMU(int IMUID, string IMUType, string IMUName, float Weight);
 		string getIMUData(int IMUID);
 		void setIMUData(int IMUID, string Data);
-		int verifyData(string Data);
+		int verifyData(string Data, int IMUID);
 		
 };
 

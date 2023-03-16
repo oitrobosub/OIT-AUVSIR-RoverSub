@@ -3,12 +3,12 @@
 class ProvideData
 {
 	public:
-		string getOptimizedData();
+		string getOptimizedData(string dataType);
 
 		ProvideData();
 		~ProvideData();
 
 	private:
-		void accessData();
+		string accessData(string colName);
 };
 

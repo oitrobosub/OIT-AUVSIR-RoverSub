@@ -10,19 +10,21 @@
 #include "IMUBuilder.h"
 #include "CondenseData.h"
 #include "Display.h"
+#include "ProvideData.h"
 
 #define DEFAULT_BUFLEN 4096
 
 using namespace std;
 
 //Debug levels:
-// 0 - Basic, just output to excell at end
+// 0 - Basic, just output to excel at end
 // 1 - Will output at each update of the tables
 //To use these simply pass the debugMode variable into the constructors below
 int debugMode = 1;
-IMUBuilder* DAIMUBuilder = new IMUBuilder(debugMode);
+IMUBuilder* DAIMUBuilder = new IMUBuilder();
 CondenseData* condense = new CondenseData(debugMode);
-Display* display = new Display();
+Display* display = new Display(true);
+ProvideData* getData = new ProvideData();
 
 bool pollData(SOCKET sock);
 
@@ -98,8 +100,6 @@ int main()
         //Creates object with all connected IMUs named, NOT no data present at this point
         DAIMUBuilder->IMUPopulator(recvbuf);
 
-        //TEMPORARY count to use later
-        int count = 0;
         while (communicating)
         {
             //Just do it non-async in here
@@ -108,12 +108,14 @@ int main()
             //If you want to run in debug mode pass a number in to this ctor that defines level of verbosity (currently 0, 1)
             condense->condenser();
             this_thread::sleep_for(chrono::milliseconds(250));
-            printf("Count: %d\n", count);
-            //temp to not loop forever
-            count++;
-            if (count > 1)
-                communicating = false;
         }
+
+        //This is how an outside source would access data, here for demo purposes
+        //Uses F,R,P,S, and Accuracy for the optimizations
+        string dataString = getData->getOptimizedData("F");
+        printf("##############################################################################################\n");
+        printf("Requested Front data.\nFront data received: %s\n", dataString.c_str());
+        printf("##############################################################################################\n");
     }
     
     //close connection to FakeBot
@@ -122,13 +124,14 @@ int main()
         closesocket(sock);
     WSACleanup();
 
-    if (debugMode > 0)
+    if (debugMode >= 0)
     {
         display->DBToExcel("SELECT * FROM IMUTable;", "IMUTable.csv");
         display->DBToExcel("SELECT * FROM OptTable;", "OptTable.csv");
     }
 
     //Destroy what needs to be destroyed
+    DAIMUBuilder->clearTables();
     DAIMUBuilder->~IMUBuilder();
 
     return 0;

@@ -6,7 +6,7 @@
 class Display
 {
 	public:
-		Display();
+		Display(bool connection);
 		void displayCondensedData();
 		void DBToExcel(string cmd, string fileName);
 		~Display();
@@ -14,6 +14,6 @@ class Display
 	private:
 		bool displayState;
 
-		bool checkDisplayConnection();
+		void checkDisplayConnection(bool connection);
 };
 
